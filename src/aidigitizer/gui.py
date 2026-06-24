@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 
 import cv2
 from PyQt6.QtCore import QPoint, QRect, Qt
