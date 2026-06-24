@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-import cv2
 import numpy as np
 import pytest
+
+cv2 = pytest.importorskip("cv2")
 
 from aidigitizer.axis_detection import detect_axes
 
