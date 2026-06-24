@@ -57,6 +57,10 @@ class DigitizerUI(QMainWindow):
         btn_digitize.clicked.connect(self.start_digitizing)
         panel.addWidget(btn_digitize)
 
+        btn_stop_digitize = QPushButton("指定モード終了")
+        btn_stop_digitize.clicked.connect(self.stop_digitizing)
+        panel.addWidget(btn_stop_digitize)
+
         btn_auto = QPushButton("自動一括検出")
         btn_auto.clicked.connect(self.auto_detect)
         panel.addWidget(btn_auto)
@@ -83,7 +87,6 @@ class DigitizerUI(QMainWindow):
         
         # 描画済みのポイントを表示
         for label, pts in self.points.items():
-            color = QColor(Qt.GlobalColor.red) if label == self.current_label else QColor(Qt.GlobalColor.blue)
             for x, y in pts:
                 cv2.circle(img, (x, y), 5, (0, 0, 255) if label == self.current_label else (255, 0, 0), -1)
                 cv2.putText(img, label, (x+7, y-7), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
@@ -110,7 +113,7 @@ class DigitizerUI(QMainWindow):
     def mousePressEvent(self, event):
         if not self.image_path: return
         
-        pos = self.image_label.mapFromParent(event.pos())
+        pos = self.image_label.mapFromParent(event.position().toPoint())
         if not self.image_label.rect().contains(pos): return
 
         # 表示座標から画像座標への変換
@@ -129,7 +132,7 @@ class DigitizerUI(QMainWindow):
 
     def mouseMoveEvent(self, event):
         if self.mode == "LEARN" and self.start_point:
-            pos = self.image_label.mapFromParent(event.pos())
+            pos = self.image_label.mapFromParent(event.position().toPoint())
             img_pos = self.map_to_img_coords(pos)
             self.selection_rect = QRect(self.start_point, img_pos).normalized()
             self.update_display()
@@ -181,6 +184,11 @@ class DigitizerUI(QMainWindow):
             return
         self.mode = "DIGITIZE"
         self.setCursor(Qt.CursorShape.CrossCursor)
+
+    def stop_digitizing(self):
+        """DIGITIZEモードを終了しカーソルを元に戻す"""
+        self.mode = "VIEW"
+        self.setCursor(Qt.CursorShape.ArrowCursor)
 
     def select_label(self, item):
         self.current_label = item.text()
