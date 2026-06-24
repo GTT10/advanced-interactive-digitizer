@@ -1,32 +1,103 @@
 # Advanced Interactive Digitizer
 
-WebPlotDigitizerよりも高度な、幾何形状学習とインタラクティブな補正機能を備えたPython製デジタイザです。
+Interactive plot digitizer for extracting numerical data from graph images with axis calibration, manual correction, project saving, and symbol-assisted point detection.
 
-## 特徴
+This project is aimed at research workflows where extracted points must be revisable and auditable. The raw image coordinates are kept together with calibrated data coordinates so that digitized data can be checked later instead of becoming another mysterious CSV artifact.
 
-- **凡例からの学習**: グラフの凡例領域をマウスで囲むだけで、プロットの幾何形状（三角形、四角形など）を自動学習します。
-- **インテリジェント補正**: ユーザーが大まかな位置を指定すると、アルゴリズムがシンボルの重心やマッチング位置を計算し、精密な座標に自動補正します。
-- **ヒューマン・イン・ザ・ループ**: 自動検出や補正の結果を人間がその場で確認し、必要に応じて手動で微調整・削除が可能です。
-- **一括自動検出**: 学習した形状に基づき、画像全体から同一のプロットを高速に一括抽出します。
+## Current scope
 
-## 使い方
+The v0.1 goal is a reliable manual-first digitizer:
 
-1. `python3 digitizer_gui.py` を実行してGUIを起動します。
-2. 「画像を読み込む」からグラフ画像を選択します。
-3. 「カテゴリ追加 & 凡例学習」をクリックし、凡例内のシンボルをマウスでドラッグして囲みます。
-4. 「プロット指定モード」に切り替え、グラフ上のプロットを適当にクリックします。アルゴリズムが自動的に中心へ補正します。
-5. 必要に応じて「自動一括検出」を実行し、全データを抽出します。
-6. 「CSVエクスポート」で結果を保存します。
+- Load plot images (`png`, `jpg`, `bmp`, `tif`)
+- Calibrate X and Y axes from two clicked reference points each
+- Support linear and base-10 logarithmic axes
+- Create named data series
+- Add points manually with optional template-based refinement
+- Learn a plot marker from a legend bounding box
+- Detect matching markers in bulk using OpenCV template matching
+- Delete the latest point in the active series
+- Export CSV with both data coordinates and raw image pixels
+- Save/load digitizing sessions as `.aid.json`
 
-## 依存ライブラリ
+Automatic detection is intentionally treated as an assistant to manual digitizing, not as magic. Magic is usually just bugs wearing nicer shoes.
 
-- Python 3.x
-- OpenCV (`opencv-python`)
-- PyQt6
-- NumPy
-- Matplotlib (テスト画像生成用)
+## Installation
 
-## 開発者向け
+```bash
+git clone https://github.com/GTT10/advanced-interactive-digitizer.git
+cd advanced-interactive-digitizer
+python -m pip install -e ".[dev]"
+```
 
-コアアルゴリズムは `digitizer_core.py` に、GUI実装は `digitizer_gui.py` に分離されています。
-独自のマッチングロジックやAIモデルの組み込みも容易な設計になっています。
+## Run the GUI
+
+After installation:
+
+```bash
+aidigitizer
+```
+
+For quick local use without installing the console script:
+
+```bash
+python digitizer_gui.py
+```
+
+## Basic workflow
+
+1. Click **画像を読み込む** and open a graph image.
+2. Click **系列追加** and create a series label.
+3. Click **X軸校正**.
+   - Enter the two known X values.
+   - Select `linear` or `log10`.
+   - Click the two corresponding positions on the image.
+4. Click **Y軸校正** and repeat the same process for the Y axis.
+5. Click **点追加モード** and click data points.
+6. Use **最後の点を削除** if a point is wrong.
+7. Use **CSVエクスポート** to export extracted data.
+8. Use **プロジェクトを保存** to save a revisable `.aid.json` session.
+
+## CSV format
+
+CSV exports include calibrated data coordinates and raw image coordinates:
+
+```csv
+label,data_x,data_y,image_x,image_y,note
+AMN,0.5,50.0,320,240,
+```
+
+If the axes have not been calibrated, `data_x` and `data_y` are left blank while `image_x` and `image_y` are still exported.
+
+## Project structure
+
+```text
+advanced-interactive-digitizer/
+├─ src/aidigitizer/
+│  ├─ calibration.py   # image pixel -> graph coordinate mapping
+│  ├─ core.py          # OpenCV template learning and matching
+│  ├─ gui.py           # PyQt6 user interface
+│  ├─ models.py        # point, series, project dataclasses
+│  └─ project.py       # JSON and CSV IO
+├─ tests/
+├─ digitizer_core.py   # backward-compatible wrapper
+├─ digitizer_gui.py    # backward-compatible wrapper
+└─ pyproject.toml
+```
+
+## Development
+
+Run tests:
+
+```bash
+pytest
+```
+
+Run linting:
+
+```bash
+ruff check .
+```
+
+## Notes
+
+This is not yet a full replacement for mature tools such as WebPlotDigitizer. The near-term priority is correctness and reproducibility for research use: axis calibration, clean state management, editable points, and stable exports. Fancy detection can come after the boring parts stop being wrong.
