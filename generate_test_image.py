@@ -18,5 +18,5 @@ plt.xlabel("X axis")
 plt.ylabel("Y axis")
 plt.grid(True)
 
-plt.savefig('/home/ubuntu/test_plot.png')
-print("Test image saved to /home/ubuntu/test_plot.png")
+plt.savefig('/home/user/webapp/test_plot.png')
+print("Test image saved to /home/user/webapp/test_plot.png")

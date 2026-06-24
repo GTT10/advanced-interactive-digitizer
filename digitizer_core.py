@@ -104,6 +104,10 @@ class AdvancedDigitizerCore:
         # 高速化のため、マルチスケールではなく単一スケールだが、
         # マッチング前に二値化やエッジ強調を行うことで精度と速度を調整
         # 1/2に縮小して高速マッチング
+        # ※縮小後テンプレートが 0px になる場合 (int(1 * 0.5) = 0) はクラッシュするため
+        #   resize 前にサイズを確認して早期リターンする
+        if int(temp_img.shape[0] * 0.5) < 1 or int(temp_img.shape[1] * 0.5) < 1:
+            return []
         small_gray = cv2.resize(self.gray_image, (0,0), fx=0.5, fy=0.5)
         small_temp = cv2.resize(temp_img, (0,0), fx=0.5, fy=0.5)
         res = cv2.matchTemplate(small_gray, small_temp, cv2.TM_CCOEFF_NORMED)
