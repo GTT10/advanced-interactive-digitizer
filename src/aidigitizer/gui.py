@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from aidigitizer.axis_detection import AxisDetectionResult, detect_axes
 from aidigitizer.calibration import AxisCalibration, AxisScale, PlotCalibration
 from aidigitizer.core import AdvancedDigitizerCore
 from aidigitizer.models import DataSeries, DigitizerProject
@@ -39,6 +40,7 @@ class DigitizerUI(QMainWindow):
         self.pending_axis: str | None = None
         self.pending_axis_values: tuple[float, float, AxisScale] | None = None
         self.pending_axis_pixels: list[tuple[float, float]] = []
+        self.axis_detection_result: AxisDetectionResult | None = None
         self.x_axis: AxisCalibration | None = None
         self.y_axis: AxisCalibration | None = None
         self.display_image: QPixmap | None = None
@@ -76,6 +78,7 @@ class DigitizerUI(QMainWindow):
         panel.addWidget(self.label_list)
 
         self._add_button(panel, "系列追加", self.add_series)
+        self._add_button(panel, "軸自動検出", self.auto_detect_axes)
         self._add_button(panel, "X軸校正", lambda: self.start_axis_calibration("x"))
         self._add_button(panel, "Y軸校正", lambda: self.start_axis_calibration("y"))
         self._add_button(panel, "凡例テンプレート学習", self.start_learning)
@@ -107,6 +110,7 @@ class DigitizerUI(QMainWindow):
         self.current_label = None
         self.x_axis = None
         self.y_axis = None
+        self.axis_detection_result = None
         self.label_list.clear()
         self.update_display()
 
@@ -126,6 +130,7 @@ class DigitizerUI(QMainWindow):
             self.project = project
             self.x_axis = None if project.calibration is None else project.calibration.x_axis
             self.y_axis = None if project.calibration is None else project.calibration.y_axis
+            self.axis_detection_result = None
             self.refresh_series_list()
             self.update_display()
         except Exception as exc:  # pragma: no cover - GUI feedback path
@@ -196,6 +201,78 @@ class DigitizerUI(QMainWindow):
         self.pending_axis_values = (v1, v2, AxisScale(scale_text))
         self.pending_axis_pixels = []
         self.status_label.setText(f"{axis.upper()}軸: 1点目、2点目の順に画像上をクリック。")
+
+    def auto_detect_axes(self) -> None:
+        if self.core.image is None:
+            QMessageBox.warning(self, "警告", "先に画像を読み込んでください。")
+            return
+
+        result = detect_axes(self.core.image)
+        self.axis_detection_result = result
+        self.update_display()
+
+        if not result.is_complete or result.x_axis is None or result.y_axis is None:
+            QMessageBox.warning(self, "軸自動検出", "X/Y軸候補を検出できませんでした。手動校正してください。")
+            return
+
+        answer = QMessageBox.question(
+            self,
+            "軸自動検出",
+            f"軸候補を検出しました。信頼度: {result.confidence:.2f}\n"
+            "表示中の候補線を使って校正値を入力しますか？",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            self.status_label.setText("軸候補を表示しました。違うなら手動校正してください。")
+            return
+
+        x_values = self._prompt_axis_values("X", "左端", "右端")
+        if x_values is None:
+            return
+        y_values = self._prompt_axis_values("Y", "下端", "上端")
+        if y_values is None:
+            return
+
+        x1, x2, x_scale = x_values
+        y1, y2, y_scale = y_values
+        x_pixel1, x_pixel2 = result.x_axis.x_calibration_points()
+        y_pixel1, y_pixel2 = result.y_axis.y_calibration_points()
+
+        try:
+            self.x_axis = AxisCalibration(x_pixel1, x1, x_pixel2, x2, x_scale)
+            self.y_axis = AxisCalibration(y_pixel1, y1, y_pixel2, y2, y_scale)
+            self.project.calibration = PlotCalibration(self.x_axis, self.y_axis)
+            self.project.update_data_coordinates()
+        except Exception as exc:  # pragma: no cover - GUI feedback path
+            QMessageBox.critical(self, "校正失敗", str(exc))
+            return
+
+        self.status_label.setText("軸自動検出候補からX/Y軸校正を設定しました。")
+        self.update_display()
+
+    def _prompt_axis_values(
+        self,
+        axis_name: str,
+        first_label: str,
+        second_label: str,
+    ) -> tuple[float, float, AxisScale] | None:
+        v1, ok = QInputDialog.getDouble(self, f"{axis_name}軸校正", f"{first_label}の実値:", decimals=12)
+        if not ok:
+            return None
+        v2, ok = QInputDialog.getDouble(self, f"{axis_name}軸校正", f"{second_label}の実値:", decimals=12)
+        if not ok:
+            return None
+        scale_text, ok = QInputDialog.getItem(
+            self,
+            f"{axis_name}軸スケール",
+            "スケール:",
+            [AxisScale.LINEAR.value, AxisScale.LOG10.value],
+            0,
+            False,
+        )
+        if not ok:
+            return None
+        return v1, v2, AxisScale(scale_text)
 
     def start_learning(self) -> None:
         if self.core.image is None:
@@ -268,6 +345,8 @@ class DigitizerUI(QMainWindow):
             return
         image = self.core.image.copy()
 
+        self._draw_detected_axes(image)
+
         for series in self.project.series:
             active = series.label == self.current_label
             color = (0, 0, 255) if active else (255, 0, 0)
@@ -301,6 +380,21 @@ class DigitizerUI(QMainWindow):
             Qt.TransformationMode.SmoothTransformation,
         )
         self.image_label.setPixmap(scaled)
+
+    def _draw_detected_axes(self, image) -> None:
+        result = self.axis_detection_result
+        if result is None:
+            return
+        if result.x_axis is not None:
+            axis = result.x_axis
+            cv2.line(image, (axis.x1, axis.y1), (axis.x2, axis.y2), (0, 255, 0), 2)
+            for px, py in axis.x_calibration_points():
+                cv2.circle(image, (int(px), int(py)), 5, (0, 255, 0), -1)
+        if result.y_axis is not None:
+            axis = result.y_axis
+            cv2.line(image, (axis.x1, axis.y1), (axis.x2, axis.y2), (0, 255, 255), 2)
+            for px, py in axis.y_calibration_points():
+                cv2.circle(image, (int(px), int(py)), 5, (0, 255, 255), -1)
 
     def resizeEvent(self, event) -> None:  # noqa: N802
         self.update_display()
