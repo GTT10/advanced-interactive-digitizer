@@ -200,7 +200,9 @@ class DigitizerUI(QMainWindow):
         self.pending_axis = axis
         self.pending_axis_values = (v1, v2, AxisScale(scale_text))
         self.pending_axis_pixels = []
+        self.axis_detection_result = None
         self.status_label.setText(f"{axis.upper()}軸: 1点目、2点目の順に画像上をクリック。")
+        self.update_display()
 
     def auto_detect_axes(self) -> None:
         if self.core.image is None:
