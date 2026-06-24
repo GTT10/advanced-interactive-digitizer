@@ -178,7 +178,7 @@ def _merge_horizontal_segments(
     width: int,
     height: int,
 ) -> list[LineSegment]:
-    del width, height
+    del height
     buckets: dict[int, list[LineSegment]] = {}
     for seg in segments:
         y = int(round((seg.y1 + seg.y2) / 2.0))
@@ -186,13 +186,24 @@ def _merge_horizontal_segments(
         buckets.setdefault(key, []).append(seg)
 
     merged: list[LineSegment] = []
+    gap_threshold = max(15, int(width * 0.03))
+
     for group in buckets.values():
-        if not group:
-            continue
-        y = int(round(sum((s.y1 + s.y2) / 2.0 for s in group) / len(group)))
-        x_min = min(s.x_min for s in group)
-        x_max = max(s.x_max for s in group)
-        merged.append(LineSegment(x_min, y, x_max, y))
+        sorted_group = sorted(group, key=lambda seg: seg.x_min)
+        current_group: list[LineSegment] = []
+        for seg in sorted_group:
+            if not current_group:
+                current_group = [seg]
+                continue
+            current_x_max = max(item.x_max for item in current_group)
+            if seg.x_min - current_x_max <= gap_threshold:
+                current_group.append(seg)
+            else:
+                merged.append(_collapse_horizontal_group(current_group))
+                current_group = [seg]
+        if current_group:
+            merged.append(_collapse_horizontal_group(current_group))
+
     return merged
 
 
@@ -201,7 +212,7 @@ def _merge_vertical_segments(
     width: int,
     height: int,
 ) -> list[LineSegment]:
-    del width, height
+    del width
     buckets: dict[int, list[LineSegment]] = {}
     for seg in segments:
         x = int(round((seg.x1 + seg.x2) / 2.0))
@@ -209,14 +220,45 @@ def _merge_vertical_segments(
         buckets.setdefault(key, []).append(seg)
 
     merged: list[LineSegment] = []
+    gap_threshold = max(15, int(height * 0.03))
+
     for group in buckets.values():
-        if not group:
-            continue
-        x = int(round(sum((s.x1 + s.x2) / 2.0 for s in group) / len(group)))
-        y_min = min(s.y_min for s in group)
-        y_max = max(s.y_max for s in group)
-        merged.append(LineSegment(x, y_min, x, y_max))
+        sorted_group = sorted(group, key=lambda seg: seg.y_min)
+        current_group: list[LineSegment] = []
+        for seg in sorted_group:
+            if not current_group:
+                current_group = [seg]
+                continue
+            current_y_max = max(item.y_max for item in current_group)
+            if seg.y_min - current_y_max <= gap_threshold:
+                current_group.append(seg)
+            else:
+                merged.append(_collapse_vertical_group(current_group))
+                current_group = [seg]
+        if current_group:
+            merged.append(_collapse_vertical_group(current_group))
+
     return merged
+
+
+def _collapse_horizontal_group(group: list[LineSegment]) -> LineSegment:
+    y = int(round(sum((seg.y1 + seg.y2) / 2.0 for seg in group) / len(group)))
+    return LineSegment(
+        x1=min(seg.x_min for seg in group),
+        y1=y,
+        x2=max(seg.x_max for seg in group),
+        y2=y,
+    )
+
+
+def _collapse_vertical_group(group: list[LineSegment]) -> LineSegment:
+    x = int(round(sum((seg.x1 + seg.x2) / 2.0 for seg in group) / len(group)))
+    return LineSegment(
+        x1=x,
+        y1=min(seg.y_min for seg in group),
+        x2=x,
+        y2=max(seg.y_max for seg in group),
+    )
 
 
 def _rank_horizontal(segments: list[LineSegment], width: int, height: int) -> list[LineSegment]:
@@ -251,7 +293,7 @@ def _score_axis_pair(horizontal: LineSegment, vertical: LineSegment, width: int,
     vertical_contains_intersection = vertical.y_min - 8 <= h_y <= vertical.y_max + 8
 
     intersection_score = 1.5 if horizontal_contains_intersection and vertical_contains_intersection else -1.0
-    lower_left_score = (v_x <= width * 0.45) + (h_y >= height * 0.45)
+    lower_left_score = int(v_x <= width * 0.45) + int(h_y >= height * 0.45)
     span_score = min(horizontal.length / max(1, width), 1.0) + min(vertical.length / max(1, height), 1.0)
 
     # A useful x-axis should mostly extend to the right of the y-axis, and a
