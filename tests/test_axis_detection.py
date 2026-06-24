@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import importlib
+
 import numpy as np
 import pytest
 
 cv2 = pytest.importorskip("cv2")
-
-from aidigitizer.axis_detection import detect_axes
+detect_axes = importlib.import_module("aidigitizer.axis_detection").detect_axes
 
 
 def make_plot_image(*, include_frame: bool = False, include_grid: bool = False) -> np.ndarray:
