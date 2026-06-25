@@ -6,8 +6,8 @@ from aidigitizer.models import DataSeries, DigitizedPoint, DigitizerProject
 __all__ = [
     "AxisCalibration",
     "AxisScale",
-    "PlotCalibration",
     "DataSeries",
     "DigitizedPoint",
     "DigitizerProject",
+    "PlotCalibration",
 ]
