@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>digitizer — point reviewer</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #15171c; color: #d7dae0;
+               font: 13px/1.4 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  #bar { display: flex; gap: 10px; align-items: center; padding: 6px 12px;
+         background: #1d2027; border-bottom: 1px solid #2c313c; }
+  #bar select, #bar button { background: #11131a; color: #d7dae0; border: 1px solid #39404e;
+                border-radius: 4px; padding: 3px 8px; font: inherit; cursor: pointer; }
+  #bar button:hover { border-color: #586074; background: #1a1d25; }
+  .seriesnav { display: inline-flex; gap: 4px; align-items: center; }
+  .seriesnav button { padding: 3px 7px; }
+  #modeBtn { font-weight: 700; min-width: 78px; }
+  #modeBtn.select { color: #7fb0ff; border-color: #3a557e; }
+  #modeBtn.add    { color: #6ee06e; border-color: #3a7e4a; background: #14241a; }
+  #bar .grow { flex: 1; }
+  #bar #status { color: #8b93a3; }
+  #bar #dirty { color: #ffcf5a; font-weight: 600; }
+  #wrap { position: relative; height: calc(100% - 40px); }
+  canvas { display: block; width: 100%; height: 100%; }
+  canvas.select { cursor: default; }
+  canvas.add { cursor: crosshair; }
+  #hud { position: absolute; left: 10px; bottom: 10px; padding: 8px 10px;
+         background: rgba(17,19,26,.82); border: 1px solid #2c313c; border-radius: 6px;
+         pointer-events: none; white-space: pre; max-width: 52ch; }
+  #help { position: absolute; right: 10px; top: 10px; padding: 8px 10px;
+          background: rgba(17,19,26,.82); border: 1px solid #2c313c; border-radius: 6px;
+          pointer-events: none; color: #97a0b2; white-space: pre; }
+  kbd { color: #cfd6e4; }
+</style>
+</head>
+<body>
+  <div id="bar">
+    <strong>digitizer</strong>
+    <label>plot <select id="plot"></select></label>
+    <span class="seriesnav">species
+      <button id="prevS" title="previous species (,)">◀</button>
+      <select id="series"></select>
+      <button id="nextS" title="next species (.)">▶</button>
+    </span>
+    <button id="modeBtn" class="select" title="toggle SELECT / ADD (a)">SELECT</button>
+    <button id="rBtn"    title="set exact T, mole_fraction on selected point (r)">set T,mf</button>
+    <button id="undoBtn" title="undo last change (z / Ctrl+Z)">undo</button>
+    <button id="saveBtn" title="save edits.json (s)">save</button>
+    <span class="grow"></span>
+    <span id="status">—</span>
+    <span id="dirty"></span>
+  </div>
+  <div id="wrap">
+    <canvas id="cv" class="select"></canvas>
+    <div id="hud">loading…</div>
+    <div id="help"><b>SELECT</b>: click a point to select · <b>ADD</b> (a): click to place a point
+<kbd>arrows</kbd> move 0.5px/zoom · <kbd>shift</kbd> 5px   <kbd>tab</kbd>/<kbd>shift+tab</kbd> prev/next point (recenters)
+<kbd>◀ ▶</kbd> or <kbd>,</kbd> <kbd>.</kbd> switch species   <kbd>right-click</kbd>/<kbd>d</kbd> delete · <kbd>z</kbd> undo · <kbd>u</kbd> restore auto
+<kbd>r</kbd> type exact T / mole-fraction   <kbd>wheel</kbd>/<kbd>drag</kbd> zoom/pan   <kbd>s</kbd> save</div>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>
