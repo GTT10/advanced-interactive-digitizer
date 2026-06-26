@@ -28,3 +28,6 @@ Thumbs.db
 # Digitizer outputs
 *.aid.json
 *.csv
+
+# HSV color-marker pipeline outputs (CSVs, edits.json, overlays are regenerated)
+hsv_pipeline/extracted/

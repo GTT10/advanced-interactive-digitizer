@@ -111,3 +111,15 @@ ruff check .
 ## Notes
 
 This is not yet a full replacement for mature tools such as WebPlotDigitizer. The near-term priority is correctness and reproducibility for research use: axis calibration, clean state management, editable points, and stable exports. Fancy detection can come after the boring parts stop being wrong.
+
+## Alternative pipeline: HSV color-marker digitizer (`hsv_pipeline/`)
+
+For plots where each series is a differently **coloured marker** over same-colour
+fitted lines, [`hsv_pipeline/`](hsv_pipeline/README.md) offers a complementary,
+self-contained pipeline: HSV colour segmentation, morphological dash-stripping,
+shape-aware marker centres (circle-fit / triangle-centroid / opened-square), YAML
+multi-plot config, an `edits.json` correction store, and **two** reviewers — a
+matplotlib one and a browser/Canvas one. It ships a synthetic, copyright-clean demo
+(`python hsv_pipeline/tools/make_demo.py`) so it runs out of the box. See its README
+for details. Same philosophy as above: auto-detection assists, humans correct, pixels
+stay the source of truth.
